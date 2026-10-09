@@ -5,7 +5,7 @@ Go HTTP server that pairs with the Screenshotter extension (for
 and [Firefox](https://addons.mozilla.org/firefox/addon/screenshotter/)) to receive
 browser screenshots, store them on disk, and serve a web UI for browsing and
 annotating them. See also the
-[Slack bridge](https://github.com/mkende/screenshotter_slack_bridge), which
+[Slack bridge](https://github.com/screenshotter-org/screenshotter_slack_bridge), which
 previews Screenshotter links inline in Slack.
 
 The server is the backend component of Screenshotter. The Chrome extension
@@ -50,7 +50,7 @@ volumes:
 ## Install with Go
 
 ```sh
-go install github.com/mkende/screenshotter_server/cmd/screenshotter@latest
+go install github.com/screenshotter-org/screenshotter_server/cmd/screenshotter@latest
 ```
 
 Needs a C compiler: the SQLite driver is CGo. Versions before `v1.1.0` declared

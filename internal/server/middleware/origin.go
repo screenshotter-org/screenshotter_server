@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/mkende/screenshotter_server/internal/config"
-	"github.com/mkende/screenshotter_server/internal/httputil"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/httputil"
 )
 
 // extensionOrigin matches the origin of a browser extension's pages: a

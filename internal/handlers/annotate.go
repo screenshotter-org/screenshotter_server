@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mkende/screenshotter_server/internal/auth"
-	"github.com/mkende/screenshotter_server/internal/httputil"
-	"github.com/mkende/screenshotter_server/internal/storage"
+	"github.com/screenshotter-org/screenshotter_server/internal/auth"
+	"github.com/screenshotter-org/screenshotter_server/internal/httputil"
+	"github.com/screenshotter-org/screenshotter_server/internal/storage"
 )
 
 // Annotate handles POST /{id}/annotate: replaces the stored PNG with the

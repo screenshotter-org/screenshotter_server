@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mkende/screenshotter_server/internal/config"
-	mw "github.com/mkende/screenshotter_server/internal/server/middleware"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
+	mw "github.com/screenshotter-org/screenshotter_server/internal/server/middleware"
 )
 
 // serveWithDomainRedirect runs one request through DomainRedirect and reports

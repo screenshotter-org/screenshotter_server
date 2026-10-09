@@ -13,13 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mkende/screenshotter_server/internal/auth"
-	"github.com/mkende/screenshotter_server/internal/config"
-	"github.com/mkende/screenshotter_server/internal/db"
-	"github.com/mkende/screenshotter_server/internal/handlers"
-	"github.com/mkende/screenshotter_server/internal/server"
-	"github.com/mkende/screenshotter_server/internal/storage"
-	"github.com/mkende/screenshotter_server/internal/tmpl"
+	"github.com/screenshotter-org/screenshotter_server/internal/auth"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/db"
+	"github.com/screenshotter-org/screenshotter_server/internal/handlers"
+	"github.com/screenshotter-org/screenshotter_server/internal/server"
+	"github.com/screenshotter-org/screenshotter_server/internal/storage"
+	"github.com/screenshotter-org/screenshotter_server/internal/tmpl"
 )
 
 func main() {

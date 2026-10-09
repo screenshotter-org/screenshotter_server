@@ -8,8 +8,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mkende/screenshotter_server/internal/db"
-	"github.com/mkende/screenshotter_server/internal/httputil"
+	"github.com/screenshotter-org/screenshotter_server/internal/db"
+	"github.com/screenshotter-org/screenshotter_server/internal/httputil"
 )
 
 const adminPageSize = 50

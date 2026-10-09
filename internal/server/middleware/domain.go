@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/mkende/screenshotter_server/internal/auth"
-	"github.com/mkende/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/auth"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
 )
 
 // NoRedirectParam is the query parameter that opts a request out of the

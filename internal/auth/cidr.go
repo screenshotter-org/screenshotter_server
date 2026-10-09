@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/mkende/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
 )
 
 // WithOriginalRemoteAddr returns a context carrying the raw TCP remote address.

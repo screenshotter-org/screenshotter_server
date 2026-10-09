@@ -20,11 +20,11 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mkende/screenshotter_server/internal/auth"
-	"github.com/mkende/screenshotter_server/internal/config"
-	"github.com/mkende/screenshotter_server/internal/db"
-	"github.com/mkende/screenshotter_server/internal/storage"
-	"github.com/mkende/screenshotter_server/internal/tmpl"
+	"github.com/screenshotter-org/screenshotter_server/internal/auth"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/db"
+	"github.com/screenshotter-org/screenshotter_server/internal/storage"
+	"github.com/screenshotter-org/screenshotter_server/internal/tmpl"
 )
 
 // makePNG returns valid in-memory PNG bytes.

@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mkende/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
 )
 
 // runTailscaleMiddleware sets up the middleware with the given trusted CIDRs,

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mkende/screenshotter_server/internal/config"
-	mw "github.com/mkende/screenshotter_server/internal/server/middleware"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
+	mw "github.com/screenshotter-org/screenshotter_server/internal/server/middleware"
 )
 
 // serveWithSecurityHeaders runs one request through SecurityHeaders and

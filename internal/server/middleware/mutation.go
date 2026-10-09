@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/mkende/screenshotter_server/internal/httputil"
+	"github.com/screenshotter-org/screenshotter_server/internal/httputil"
 )
 
 // MutationHeader is the custom request header that all state-changing requests

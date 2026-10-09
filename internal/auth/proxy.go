@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mkende/screenshotter_server/internal/config"
+	"github.com/screenshotter-org/screenshotter_server/internal/config"
 )
 
 // ProxyAuthMiddleware reads forward-auth headers injected by a trusted

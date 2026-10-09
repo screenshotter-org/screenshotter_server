@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mkende/screenshotter_server/internal/auth"
+	"github.com/screenshotter-org/screenshotter_server/internal/auth"
 )
 
 // ServeImage serves the raw PNG for GET /{id}.png. Accessible to

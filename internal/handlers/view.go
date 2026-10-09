@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mkende/screenshotter_server/internal/auth"
-	"github.com/mkende/screenshotter_server/internal/db"
+	"github.com/screenshotter-org/screenshotter_server/internal/auth"
+	"github.com/screenshotter-org/screenshotter_server/internal/db"
 )
 
 // toolbarCookie holds the owner's choice of hiding the annotation toolbar

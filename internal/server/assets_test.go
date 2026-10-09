@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mkende/screenshotter_server/internal/static"
+	"github.com/screenshotter-org/screenshotter_server/internal/static"
 )
 
 // icoMagic starts every ICO file (reserved 0, type 1 = icon).
