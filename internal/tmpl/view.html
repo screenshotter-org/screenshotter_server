@@ -1184,7 +1184,7 @@ function deleteImage(id) {
   }
 
   function setColor(color) {
-    endHighlightSession();
+    if (color !== currentColor) endHighlightSession();
     currentColor = color;
     showColorInToolbar(color);
     setCookie('annotate_color', color);
@@ -1196,7 +1196,7 @@ function deleteImage(id) {
   }
 
   function setStroke(w) {
-    endHighlightSession();
+    if (w !== currentStroke) endHighlightSession();
     currentStroke = w;
     showStrokeInToolbar(w);
     setCookie('annotate_stroke', String(w));
