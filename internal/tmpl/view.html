@@ -421,6 +421,9 @@
   <button class="tool-btn" data-tool="pen" title="Pen (P)">
     <i class="fa fa-pen" style="font-size:14px"></i>
   </button>
+  <button class="tool-btn" data-tool="highlight" title="Highlighter (H) — hold Shift for a straight line">
+    <i class="fa fa-highlighter" style="font-size:15px"></i>
+  </button>
   <button class="tool-btn" data-tool="text" title="Text (T)">
     <span style="font-weight:700;font-size:17px;font-family:serif">T</span>
   </button>
@@ -924,6 +927,10 @@ function deleteImage(id) {
   // The font sizes the toolbar steps through, in the same units as strokes.
   const FONT_SIZES = [6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 64, 80];
   const DEFAULT_FONT_SIZE = 20;
+  // The highlighter covers a line of text at the medium stroke (4 × 5 =
+  // 20 px), and lets what is under it show through.
+  const HIGHLIGHT_WIDTH_FACTOR = 5;
+  const HIGHLIGHT_OPACITY = 0.4;
 
   // ── State ────────────────────────────────────────────
   let editing = true;    // false while the toolbar is hidden: the canvas is inert
@@ -932,6 +939,7 @@ function deleteImage(id) {
   let currentStroke = 4;
   let currentFontSize = DEFAULT_FONT_SIZE;
   let isDrawing = false;
+  let highlightSession = null;  // the highlight the highlighter's next stroke joins
   let drawStart = null;
   let activeObj = null;  // object being drawn (preview)
   let background = null; // the screenshot, kept out of the history snapshots
@@ -1048,6 +1056,7 @@ function deleteImage(id) {
 
   // Replaces the annotations on the canvas with those of the snapshot.
   function restore(snap) {
+    endHighlightSession();
     canvas.discardActiveObject();
     canvas.getObjects().filter(function (o) { return !o.isBackground; }).forEach(function (o) {
       canvas.remove(o);
@@ -1138,8 +1147,10 @@ function deleteImage(id) {
       selectedObj = null;
       canvas.requestRenderAll();
     }
+    endHighlightSession();
     currentTool = tool;
-    canvas.isDrawingMode = (tool === 'pen');
+    canvas.isDrawingMode = (tool === 'pen' || tool === 'highlight');
+    if (canvas.isDrawingMode) canvas.freeDrawingBrush = tool === 'pen' ? penBrush : highlighterBrush;
     canvas.selection = (tool === 'select');
 
     canvas.forEachObject(function (obj) {
@@ -1151,7 +1162,8 @@ function deleteImage(id) {
 
     var cursors = {
       select: 'default', rect: 'crosshair', ellipse: 'crosshair',
-      arrow: 'crosshair', darrow: 'crosshair', pen: 'crosshair', text: 'text',
+      arrow: 'crosshair', darrow: 'crosshair', pen: 'crosshair',
+      highlight: 'crosshair', text: 'text',
       redact: 'crosshair',
     };
     canvas.defaultCursor = cursors[tool] || 'default';
@@ -1172,6 +1184,7 @@ function deleteImage(id) {
   }
 
   function setColor(color) {
+    endHighlightSession();
     currentColor = color;
     showColorInToolbar(color);
     setCookie('annotate_color', color);
@@ -1183,6 +1196,7 @@ function deleteImage(id) {
   }
 
   function setStroke(w) {
+    endHighlightSession();
     currentStroke = w;
     showStrokeInToolbar(w);
     setCookie('annotate_stroke', String(w));
@@ -1553,7 +1567,7 @@ function deleteImage(id) {
 
   // ── Read/write color and stroke on canvas objects ────
   function getObjectColor(obj) {
-    if (obj.type === 'arrow' || obj.type === 'path') return obj.stroke;
+    if (obj.type === 'arrow' || obj.type === 'path' || obj.type === 'highlight') return obj.stroke;
     if (obj.type === 'rect' && obj.fill === 'transparent') return obj.stroke;
     if (obj.type === 'ellipse') return obj.stroke;
     if (obj.type === 'i-text') return obj.fill;
@@ -1564,6 +1578,7 @@ function deleteImage(id) {
   // it, which showStrokeInToolbar matches against the buttons exactly.
   function getObjectStrokeWidth(obj) {
     if (obj.type === 'arrow' || obj.type === 'path') return Math.round(obj.strokeWidth / ANNOT_SCALE);
+    if (obj.type === 'highlight') return Math.round(obj.strokeWidth / ANNOT_SCALE / HIGHLIGHT_WIDTH_FACTOR);
     if (obj.type === 'rect' && obj.fill === 'transparent') return Math.round(obj.strokeWidth / ANNOT_SCALE);
     if (obj.type === 'ellipse') return Math.round(obj.strokeWidth / ANNOT_SCALE);
     return null;
@@ -1598,7 +1613,7 @@ function deleteImage(id) {
   }
 
   function applyColorToObject(obj, color) {
-    if (obj.type === 'arrow' || obj.type === 'path') {
+    if (obj.type === 'arrow' || obj.type === 'path' || obj.type === 'highlight') {
       obj.set({ stroke: color });
     } else if ((obj.type === 'rect' && obj.fill === 'transparent') || obj.type === 'ellipse') {
       obj.set({ stroke: color });
@@ -1619,10 +1634,11 @@ function deleteImage(id) {
     } else if ((obj.type === 'rect' && obj.fill === 'transparent') || obj.type === 'ellipse') {
       obj.set({ strokeWidth: sw * ANNOT_SCALE });
       canvas.renderAll();
-    } else if (obj.type === 'path') {
+    } else if (obj.type === 'path' || obj.type === 'highlight') {
       // The stroke adds to the path's box: keep the line where it is.
       var center = obj.getCenterPoint();
-      obj.set({ strokeWidth: sw * ANNOT_SCALE });
+      var factor = obj.type === 'highlight' ? HIGHLIGHT_WIDTH_FACTOR : 1;
+      obj.set({ strokeWidth: sw * ANNOT_SCALE * factor });
       obj.setPositionByOrigin(center, 'center', 'center');
       obj.setCoords();
       canvas.renderAll();
@@ -1665,7 +1681,7 @@ function deleteImage(id) {
 
   // ── Drawing events ───────────────────────────────────
   canvas.on('mouse:down', function (opt) {
-    if (currentTool === 'select' || currentTool === 'pen') return;
+    if (currentTool === 'select' || canvas.isDrawingMode) return;
 
     var ptr = canvas.getPointer(opt.e);
 
@@ -1784,19 +1800,99 @@ function deleteImage(id) {
     }
   });
 
-  // ── Pen ──────────────────────────────────────────────
-  // Free drawing is Fabric's own: the pen tool turns on its drawing mode,
-  // and each stroke becomes a path, which is then selected, moved and
-  // resized like any shape. Its line keeps its width when it is resized.
-  canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-  canvas.freeDrawingBrush.strokeLineCap = 'round';
-  canvas.freeDrawingBrush.strokeLineJoin = 'round';
-  // Picked up at the start of each stroke, so it is always the toolbar's.
-  canvas.on('mouse:down:before', function () {
-    if (currentTool !== 'pen') return;
-    canvas.freeDrawingBrush.color = currentColor;
-    canvas.freeDrawingBrush.width = currentStroke * ANNOT_SCALE;
+  // ── Pen and highlighter ──────────────────────────────
+  // Free drawing is Fabric's own: these tools turn on its drawing mode, and
+  // each stroke becomes a path, which is then selected, moved and resized
+  // like any shape. Its line keeps its width when it is resized. Shift held
+  // while drawing makes the line straight (a Fabric brush feature).
+  var penBrush = new fabric.PencilBrush(canvas);
+  penBrush.strokeLineCap = 'round';
+  penBrush.strokeLineJoin = 'round';
+
+  // The highlighter's strokes are translucent, and those drawn in one go
+  // (until the tool, colour or width changes) join into a single highlight:
+  // one path, stroked in a single pass, so where they overlap the colour
+  // does not get any deeper. While a stroke is drawn, the highlight it
+  // joins is hidden and its earlier strokes drawn again with the new one,
+  // so the preview blends the same way.
+  var HighlighterBrush = fabric.util.createClass(fabric.PencilBrush, {
+    strokeLineCap: 'butt',
+    strokeLineJoin: 'round',
+
+    // Translucent: each move redraws the whole line rather than a segment.
+    needsFullRender: function () { return true; },
+
+    // PencilBrush's own rendering, plus the earlier strokes in the same path.
+    _render: function (ctx) {
+      var points = this._points;
+      var p1 = points[0], p2 = points[1];
+      ctx = ctx || this.canvas.contextTop;
+      this._saveAndTransform(ctx);
+      ctx.globalAlpha = HIGHLIGHT_OPACITY;
+      ctx.beginPath();
+      if (highlightSession) tracePathCommands(ctx, highlightSession.path);
+      if (points.length === 2 && p1.x === p2.x && p1.y === p2.y) {
+        var w = this.width / 1000;
+        p1 = new fabric.Point(p1.x - w, p1.y);
+        p2 = new fabric.Point(p2.x + w, p2.y);
+      }
+      ctx.moveTo(p1.x, p1.y);
+      for (var i = 1; i < points.length; i++) {
+        this._drawSegment(ctx, p1, p2);
+        p1 = points[i];
+        p2 = points[i + 1];
+      }
+      ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+      ctx.restore();
+    },
   });
+
+  function tracePathCommands(ctx, commands) {
+    commands.forEach(function (c) {
+      if (c[0] === 'M') ctx.moveTo(c[1], c[2]);
+      else if (c[0] === 'L') ctx.lineTo(c[1], c[2]);
+      else if (c[0] === 'Q') ctx.quadraticCurveTo(c[1], c[2], c[3], c[4]);
+      else if (c[0] === 'C') ctx.bezierCurveTo(c[1], c[2], c[3], c[4], c[5], c[6]);
+      else if (c[0] === 'Z') ctx.closePath();
+    });
+  }
+
+  var highlighterBrush = new HighlighterBrush(canvas);
+  canvas.freeDrawingBrush = penBrush;
+
+  // A highlighter's work: a path whose opacity applies to it as a whole.
+  var Highlight = fabric.util.createClass(fabric.Path, {
+    type: 'highlight',
+    fill: null,
+    opacity: HIGHLIGHT_OPACITY,
+    strokeLineCap: 'butt',
+    strokeLineJoin: 'round',
+    strokeUniform: true,
+  });
+  Highlight.fromObject = function (object, callback) {
+    fabric.Object._fromObject('Highlight', object, callback, 'path');
+  };
+  fabric.Highlight = Highlight;
+
+  function endHighlightSession() {
+    if (highlightSession && !highlightSession.visible) highlightSession.visible = true;
+    highlightSession = null;
+  }
+
+  // The colour and width are picked up at the start of each stroke, so they
+  // are always the toolbar's.
+  canvas.on('mouse:down:before', function () {
+    if (!canvas.isDrawingMode) return;
+    var brush = canvas.freeDrawingBrush;
+    brush.color = currentColor;
+    brush.width = currentStroke * ANNOT_SCALE * (currentTool === 'highlight' ? HIGHLIGHT_WIDTH_FACTOR : 1);
+    if (currentTool === 'highlight' && highlightSession) {
+      highlightSession.visible = false;
+      canvas.renderAll();
+    }
+  });
+
   canvas.on('path:created', function (opt) {
     var path = opt.path;
     if (isDegenerate(path)) {
@@ -1804,9 +1900,28 @@ function deleteImage(id) {
       canvas.requestRenderAll();
       return;
     }
+    if (currentTool === 'highlight') {
+      canvas.remove(path);
+      var commands = path.path;
+      if (highlightSession) {
+        commands = highlightSession.path.concat(commands);
+        canvas.remove(highlightSession);
+      }
+      path = new Highlight(commands, { stroke: path.stroke, strokeWidth: path.strokeWidth });
+      canvas.add(path);
+      highlightSession = path;
+    }
     path.set({ strokeUniform: true, selectable: false, evented: false });
     path.setCoords();
     commit();
+  });
+
+  // A stroke too short to keep leaves the highlight it would have joined.
+  canvas.on('mouse:up', function () {
+    if (highlightSession && !highlightSession.visible) {
+      highlightSession.visible = true;
+      canvas.requestRenderAll();
+    }
   });
 
   // Commit after moving/scaling existing objects; eagerly fold any translation
@@ -2089,6 +2204,7 @@ function deleteImage(id) {
       if (e.key === 'a') { setTool('arrow'); return; }
       if (e.key === 'd') { setTool('darrow'); return; }
       if (e.key === 'p') { setTool('pen'); return; }
+      if (e.key === 'h') { setTool('highlight'); return; }
       if (e.key === 't') { setTool('text'); return; }
       if (e.key === 'x') { setTool('redact'); return; }
       if (e.key === '-' || e.key === '+' || e.key === '=') {
