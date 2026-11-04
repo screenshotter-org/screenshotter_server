@@ -46,6 +46,8 @@
   /* In the burger layout the script moves #meta into the brand row; the
      edit form then wraps onto several lines rather than being clipped. */
   .navbar:not(.is-desktop) #meta-edit { flex-wrap: wrap; padding: 0.5rem 0.75rem; }
+  /* Their display rule would otherwise win over the hidden attribute. */
+  #meta-view[hidden], #meta-edit[hidden], .btn-copy-icon[hidden] { display: none; }
   #meta-view .meta-title {
     font-weight: 600;
     white-space: nowrap;
@@ -53,7 +55,7 @@
     text-overflow: ellipsis;
     flex-shrink: 0;
   }
-  #meta-view .meta-title.is-unnamed { color: #aaa; font-style: italic; }
+  #meta-view .is-unnamed { color: #aaa; font-style: italic; }
   #meta-view .sep { color: #ccc; flex-shrink: 0; }
   #meta-view .meta-url {
     color: #3273dc;
@@ -65,7 +67,16 @@
     min-width: 0;
     flex-shrink: 1;
   }
-  #meta-view .meta-url:hover { text-decoration: underline; }
+  #meta-view a.meta-url[href]:hover { text-decoration: underline; }
+  /* The owner's title and URL turn into inputs when clicked. */
+  #meta-view .is-editable {
+    cursor: text;
+    border-radius: 4px;
+    padding: 0.1rem 0.3rem;
+    margin: 0 -0.3rem;
+  }
+  #meta-view .is-editable:hover { background: #f0f4ff; }
+  #meta-view a.meta-url.is-editable:hover { text-decoration: none; }
   .btn-copy-icon {
     background: none;
     border: none;
@@ -293,41 +304,36 @@
 
 {{define "navbar-start"}}
 <div id="meta">
-{{/* Display mode: title · URL [copy] [pencil] */}}
+{{/* Display mode: title · URL [copy]. The owner edits both by clicking on
+     either; the URL stays a link (followed with a modifier key or the
+     middle button, and always for other users). */}}
 <div id="meta-view">
-  {{if .Image.Title}}
-  <span class="meta-title" title="{{.Image.Title}}">{{.Image.Title}}</span>
-  {{else}}
-  <span class="meta-title is-unnamed">Unnamed</span>
-  {{end}}
+  <span class="meta-title{{if not .Image.Title}} is-unnamed{{end}}{{if .IsOwner}} is-editable{{end}}"
+        {{if .IsOwner}}title="{{if .Image.Title}}{{.Image.Title}} — {{end}}Click to edit"{{else if .Image.Title}}title="{{.Image.Title}}"{{end}}>
+    {{- if .Image.Title}}{{.Image.Title}}{{else}}Unnamed{{end -}}
+  </span>
   <span class="sep">·</span>
-  {{if .Image.SourceURL}}
-  <a class="meta-url" href="{{.Image.SourceURL}}" target="_blank" rel="noopener noreferrer"
-     title="{{.Image.SourceURL}}">{{.Image.SourceURL}}</a>
-  <button id="btn-copy-source" class="btn-copy-icon" data-copy-text="{{.Image.SourceURL}}" title="Copy source URL">
+  <a class="meta-url{{if not .Image.SourceURL}} is-unnamed{{end}}{{if .IsOwner}} is-editable{{end}}"
+     {{if .Image.SourceURL}}href="{{.Image.SourceURL}}" target="_blank" rel="noopener noreferrer"{{end}}
+     {{if .IsOwner}}title="{{if .Image.SourceURL}}{{.Image.SourceURL}} — {{end}}Click to edit"{{else}}title="{{if .Image.SourceURL}}{{.Image.SourceURL}}{{else}}No source URL set{{end}}"{{end}}>
+    {{- if .Image.SourceURL}}{{.Image.SourceURL}}{{else}}(no URL set){{end -}}
+  </a>
+  <button id="btn-copy-source" class="btn-copy-icon" data-copy-text="{{.Image.SourceURL}}" title="Copy source URL"{{if not .Image.SourceURL}} hidden{{end}}>
     <span class="icon is-small"><i class="fa fa-copy"></i></span>
   </button>
-  {{else}}
-  <span class="meta-url is-unnamed" title="No source URL set">(no URL set)</span>
-  {{end}}
-  {{if .IsOwner}}
-  <button id="btn-edit" class="button is-ghost is-small" title="Edit title and source URL">
-    <span class="icon is-small"><i class="fa fa-pencil"></i></span>
-  </button>
-  {{end}}
 </div>
 
 {{if .IsOwner}}
-{{/* Edit mode: inputs for title and URL, hidden until pencil is clicked */}}
-<form id="meta-edit" style="display:none">
+{{/* Edit mode: both fields at once, in place of the display. Enter, or a
+     click anywhere else, saves; Tab goes from one to the other; Escape
+     cancels. */}}
+<form id="meta-edit" hidden>
   <input id="edit-title" class="input is-small" type="text"
-         placeholder="Title (empty to clear)"
+         aria-label="Title" placeholder="Title (empty to clear)"
          value="{{if .Image.Title}}{{.Image.Title}}{{end}}">
   <input id="edit-source-url" class="input is-small" type="url"
-         placeholder="Source URL (leave blank to clear)"
+         aria-label="Source URL" placeholder="Source URL (empty to clear)"
          value="{{if .Image.SourceURL}}{{.Image.SourceURL}}{{end}}">
-  <button type="submit" class="button is-primary is-small">Save</button>
-  <button id="btn-cancel-edit" type="button" class="button is-light is-small">Cancel</button>
 </form>
 {{end}}
 </div>
@@ -412,10 +418,13 @@
   <button class="tool-btn" data-tool="darrow" title="Double arrow (D)">
     <i class="fa fa-arrows-left-right"></i>
   </button>
+  <button class="tool-btn" data-tool="pen" title="Pen (P)">
+    <i class="fa fa-pen" style="font-size:14px"></i>
+  </button>
   <button class="tool-btn" data-tool="text" title="Text (T)">
     <span style="font-weight:700;font-size:17px;font-family:serif">T</span>
   </button>
-  <button class="tool-btn" data-tool="redact" title="Redact (X) — solid black rectangle">
+  <button class="tool-btn" data-tool="redact" title="Redact (X) — black box, striped">
     <i class="fa fa-eye-slash" style="font-size:14px"></i>
   </button>
 
@@ -559,34 +568,6 @@ function deleteImage(id) {
     .catch(() => alert('Network error while deleting.'));
 }
 
-function startEdit() {
-  document.getElementById('meta-view').style.display = 'none';
-  document.getElementById('meta-edit').style.display = 'flex';
-  document.getElementById('edit-title').focus();
-}
-
-function cancelEdit() {
-  document.getElementById('meta-edit').style.display = 'none';
-  document.getElementById('meta-view').style.display = 'flex';
-}
-
-function saveEdit(e) {
-  e.preventDefault();
-  const title = document.getElementById('edit-title').value.trim();
-  const sourceURL = document.getElementById('edit-source-url').value.trim();
-  // The page reloads on success, so annotations must be uploaded first.
-  const annotationsSaved = window.annotationEditor ? window.annotationEditor.save() : Promise.resolve();
-  annotationsSaved.then(() => fetch('/{{.Image.ID}}', {
-    method: 'PATCH',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', 'X-Screenshotter-Request': '1' },
-    body: JSON.stringify({ title, source_url: sourceURL }),
-  })).then(r => {
-    if (r.ok) { window.location.reload(); }
-    else { return r.json().then(j => { alert('Save failed: ' + (j.error || r.status)); }); }
-  }).catch(err => alert(err instanceof Error && err.message ? 'Save failed: ' + err.message : 'Network error while saving.'));
-}
-
 (function () {
   // The extension lands here with #copied once it has put this page's link on
   // the clipboard. The fragment is dropped from the address bar so it never
@@ -603,14 +584,129 @@ function saveEdit(e) {
     });
   }
 
-  var btnEdit = document.getElementById('btn-edit');
-  if (btnEdit) { btnEdit.addEventListener('click', startEdit); }
+  // Owner: clicking the title or the URL turns both into inputs, the one
+  // clicked focused. Enter, or a click (or focus) anywhere else, saves both;
+  // Tab moves between them; Escape puts back what was there. The page is
+  // updated in place rather than reloaded, so the annotation history stays.
+  var metaView = document.getElementById('meta-view');
+  var metaForm = document.getElementById('meta-edit');
+  if (metaForm) {
+    var metaTitle = metaView.querySelector('.meta-title');
+    var metaURL = metaView.querySelector('.meta-url');
+    var editTitle = document.getElementById('edit-title');
+    var editURL = document.getElementById('edit-source-url');
+    var current = { title: editTitle.value, url: editURL.value };
+    var metaEditing = false;
+    var metaSaving = false;
 
-  var form = document.getElementById('meta-edit');
-  if (form) { form.addEventListener('submit', saveEdit); }
+    var showMeta = function () {
+      metaTitle.textContent = current.title || 'Unnamed';
+      metaTitle.classList.toggle('is-unnamed', !current.title);
+      metaTitle.title = (current.title ? current.title + ' — ' : '') + 'Click to edit';
+      metaURL.textContent = current.url || '(no URL set)';
+      metaURL.classList.toggle('is-unnamed', !current.url);
+      metaURL.title = (current.url ? current.url + ' — ' : '') + 'Click to edit';
+      if (current.url) {
+        metaURL.href = current.url;
+        metaURL.target = '_blank';
+        metaURL.rel = 'noopener noreferrer';
+      } else {
+        metaURL.removeAttribute('href');
+      }
+      btnCopySource.dataset.copyText = current.url;
+      btnCopySource.hidden = !current.url;
+      document.title = (current.title || 'Unnamed screenshot') + ' — Screenshotter';
+    };
 
-  var btnCancelEdit = document.getElementById('btn-cancel-edit');
-  if (btnCancelEdit) { btnCancelEdit.addEventListener('click', cancelEdit); }
+    var startMetaEdit = function (field) {
+      if (metaEditing) return;
+      metaEditing = true;
+      editTitle.value = current.title;
+      editURL.value = current.url;
+      metaView.hidden = true;
+      metaForm.hidden = false;
+      layoutActions();
+      field.focus();
+      field.setSelectionRange(field.value.length, field.value.length);
+    };
+
+    var endMetaEdit = function () {
+      metaEditing = false;
+      metaForm.hidden = true;
+      metaView.hidden = false;
+      layoutActions();
+    };
+
+    var commitMetaEdit = function () {
+      if (!metaEditing || metaSaving) return;
+      var next = { title: editTitle.value.trim(), url: editURL.value.trim() };
+      if (next.title === current.title && next.url === current.url) {
+        endMetaEdit();
+        return;
+      }
+      metaSaving = true;
+      editTitle.readOnly = editURL.readOnly = true;
+      fetch('/{{.Image.ID}}', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Screenshotter-Request': '1' },
+        body: JSON.stringify({ title: next.title, source_url: next.url }),
+      }).then(function (r) {
+        if (r.ok) return;
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          throw new Error(j.error || ('HTTP ' + r.status));
+        });
+      }, function () {
+        throw new Error('network error');
+      }).then(function () {
+        current = next;
+        showMeta();
+        endMetaEdit();
+      }, function (err) {
+        // The fields stay open with what was typed, to fix or Escape.
+        showToast('Could not save: ' + err.message, true);
+      }).then(function () {
+        metaSaving = false;
+        editTitle.readOnly = editURL.readOnly = false;
+      });
+    };
+
+    // A plain click edits; one with a modifier key (or the middle button,
+    // which fires no click) still opens the link.
+    metaTitle.addEventListener('click', function () { startMetaEdit(editTitle); });
+    metaURL.addEventListener('click', function (e) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      startMetaEdit(editURL);
+    });
+    // Handled here: a form with two fields and no submit button is not
+    // submitted by Enter.
+    metaForm.addEventListener('submit', function (e) { e.preventDefault(); });
+    metaForm.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitMetaEdit();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        (document.activeElement === editTitle ? editURL : editTitle).focus();
+      } else if (e.key === 'Escape' && !metaSaving) {
+        e.preventDefault();
+        endMetaEdit();
+      }
+    });
+    // A press outside the fields saves even where it moves no focus (the
+    // annotation canvas); focus leaving them for anything but the other one
+    // does too. Checked once focus has settled: the window losing focus
+    // leaves it on the field, and saves nothing.
+    document.addEventListener('pointerdown', function (e) {
+      if (metaEditing && !metaForm.contains(e.target)) commitMetaEdit();
+    }, true);
+    metaForm.addEventListener('focusout', function () {
+      setTimeout(function () {
+        if (metaEditing && !metaForm.contains(document.activeElement) && document.hasFocus()) commitMetaEdit();
+      }, 0);
+    });
+  }
 
   var btnCopyLink = document.getElementById('btn-copy-link');
   if (btnCopyLink) {
@@ -1043,7 +1139,7 @@ function saveEdit(e) {
       canvas.requestRenderAll();
     }
     currentTool = tool;
-    canvas.isDrawingMode = false;
+    canvas.isDrawingMode = (tool === 'pen');
     canvas.selection = (tool === 'select');
 
     canvas.forEachObject(function (obj) {
@@ -1055,7 +1151,8 @@ function saveEdit(e) {
 
     var cursors = {
       select: 'default', rect: 'crosshair', ellipse: 'crosshair',
-      arrow: 'crosshair', darrow: 'crosshair', text: 'text',
+      arrow: 'crosshair', darrow: 'crosshair', pen: 'crosshair', text: 'text',
+      redact: 'crosshair',
     };
     canvas.defaultCursor = cursors[tool] || 'default';
     canvas.hoverCursor = (tool === 'select') ? 'move' : (cursors[tool] || 'default');
@@ -1344,6 +1441,52 @@ function saveEdit(e) {
 
   fabric.Arrow = Arrow;
 
+  // ── Redaction class ──────────────────────────────────
+  // A black box crossed by dark grey diagonal stripes, which mark it as a
+  // redaction (rather than a black part of the image) even on a dark page.
+  // The stripes keep their spacing and width when the box is resized:
+  // they are drawn with the object's scaling undone.
+  const REDACT_FILL = '#111111';
+  const REDACT_STRIPE = '#444444';
+  const REDACT_STRIPE_WIDTH = 3 * ANNOT_SCALE;
+  const REDACT_STRIPE_GAP = 12 * ANNOT_SCALE;
+  var Redaction = fabric.util.createClass(fabric.Rect, {
+    type: 'redaction',
+    objectCaching: false,
+
+    initialize: function (options) {
+      this.callSuper('initialize', Object.assign({}, options, {
+        fill: REDACT_FILL, stroke: null, strokeWidth: 0,
+      }));
+    },
+
+    _render: function (ctx) {
+      this.callSuper('_render', ctx);
+      var w = this.width * this.scaleX;
+      var h = this.height * this.scaleY;
+      ctx.save();
+      ctx.scale(1 / this.scaleX, 1 / this.scaleY);
+      ctx.beginPath();
+      ctx.rect(-w / 2, -h / 2, w, h);
+      ctx.clip();
+      ctx.strokeStyle = REDACT_STRIPE;
+      ctx.lineWidth = REDACT_STRIPE_WIDTH;
+      ctx.beginPath();
+      for (var d = -h; d < w + REDACT_STRIPE_WIDTH; d += REDACT_STRIPE_GAP) {
+        ctx.moveTo(-w / 2 + d, h / 2);
+        ctx.lineTo(-w / 2 + d + h, -h / 2);
+      }
+      ctx.stroke();
+      ctx.restore();
+    },
+  });
+
+  Redaction.fromObject = function (object, callback) {
+    return fabric.Object._fromObject('Redaction', object, callback);
+  };
+
+  fabric.Redaction = Redaction;
+
   // ── Endpoint controls (replace the default 8 BB handles with two square endpoints) ──
   // Fabric's finalMatrix undoes the viewport zoom (it expects offsets that
   // are already zoomed, like its own controls' dim), so the scene-unit offset
@@ -1410,7 +1553,7 @@ function saveEdit(e) {
 
   // ── Read/write color and stroke on canvas objects ────
   function getObjectColor(obj) {
-    if (obj.type === 'arrow') return obj.stroke;
+    if (obj.type === 'arrow' || obj.type === 'path') return obj.stroke;
     if (obj.type === 'rect' && obj.fill === 'transparent') return obj.stroke;
     if (obj.type === 'ellipse') return obj.stroke;
     if (obj.type === 'i-text') return obj.fill;
@@ -1420,7 +1563,7 @@ function saveEdit(e) {
   // Back from the object's image-pixel width to the toolbar value that made
   // it, which showStrokeInToolbar matches against the buttons exactly.
   function getObjectStrokeWidth(obj) {
-    if (obj.type === 'arrow') return Math.round(obj.strokeWidth / ANNOT_SCALE);
+    if (obj.type === 'arrow' || obj.type === 'path') return Math.round(obj.strokeWidth / ANNOT_SCALE);
     if (obj.type === 'rect' && obj.fill === 'transparent') return Math.round(obj.strokeWidth / ANNOT_SCALE);
     if (obj.type === 'ellipse') return Math.round(obj.strokeWidth / ANNOT_SCALE);
     return null;
@@ -1455,7 +1598,7 @@ function saveEdit(e) {
   }
 
   function applyColorToObject(obj, color) {
-    if (obj.type === 'arrow') {
+    if (obj.type === 'arrow' || obj.type === 'path') {
       obj.set({ stroke: color });
     } else if ((obj.type === 'rect' && obj.fill === 'transparent') || obj.type === 'ellipse') {
       obj.set({ stroke: color });
@@ -1475,6 +1618,13 @@ function saveEdit(e) {
       canvas.renderAll();
     } else if ((obj.type === 'rect' && obj.fill === 'transparent') || obj.type === 'ellipse') {
       obj.set({ strokeWidth: sw * ANNOT_SCALE });
+      canvas.renderAll();
+    } else if (obj.type === 'path') {
+      // The stroke adds to the path's box: keep the line where it is.
+      var center = obj.getCenterPoint();
+      obj.set({ strokeWidth: sw * ANNOT_SCALE });
+      obj.setPositionByOrigin(center, 'center', 'center');
+      obj.setCoords();
       canvas.renderAll();
     }
     return obj;
@@ -1515,7 +1665,7 @@ function saveEdit(e) {
 
   // ── Drawing events ───────────────────────────────────
   canvas.on('mouse:down', function (opt) {
-    if (currentTool === 'select') return;
+    if (currentTool === 'select' || currentTool === 'pen') return;
 
     var ptr = canvas.getPointer(opt.e);
 
@@ -1566,9 +1716,8 @@ function saveEdit(e) {
       });
       canvas.add(activeObj);
     } else if (currentTool === 'redact') {
-      activeObj = new fabric.Rect({
+      activeObj = new fabric.Redaction({
         left: ptr.x, top: ptr.y, width: 1, height: 1,
-        fill: '#111111', stroke: 'transparent', strokeWidth: 0,
         selectable: false, evented: false,
       });
       canvas.add(activeObj);
@@ -1633,6 +1782,31 @@ function saveEdit(e) {
       }
       activeObj = null;
     }
+  });
+
+  // ── Pen ──────────────────────────────────────────────
+  // Free drawing is Fabric's own: the pen tool turns on its drawing mode,
+  // and each stroke becomes a path, which is then selected, moved and
+  // resized like any shape. Its line keeps its width when it is resized.
+  canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+  canvas.freeDrawingBrush.strokeLineCap = 'round';
+  canvas.freeDrawingBrush.strokeLineJoin = 'round';
+  // Picked up at the start of each stroke, so it is always the toolbar's.
+  canvas.on('mouse:down:before', function () {
+    if (currentTool !== 'pen') return;
+    canvas.freeDrawingBrush.color = currentColor;
+    canvas.freeDrawingBrush.width = currentStroke * ANNOT_SCALE;
+  });
+  canvas.on('path:created', function (opt) {
+    var path = opt.path;
+    if (isDegenerate(path)) {
+      canvas.remove(path);
+      canvas.requestRenderAll();
+      return;
+    }
+    path.set({ strokeUniform: true, selectable: false, evented: false });
+    path.setCoords();
+    commit();
   });
 
   // Commit after moving/scaling existing objects; eagerly fold any translation
@@ -1914,6 +2088,7 @@ function saveEdit(e) {
       if (e.key === 'o') { setTool('ellipse'); return; }
       if (e.key === 'a') { setTool('arrow'); return; }
       if (e.key === 'd') { setTool('darrow'); return; }
+      if (e.key === 'p') { setTool('pen'); return; }
       if (e.key === 't') { setTool('text'); return; }
       if (e.key === 'x') { setTool('redact'); return; }
       if (e.key === '-' || e.key === '+' || e.key === '=') {

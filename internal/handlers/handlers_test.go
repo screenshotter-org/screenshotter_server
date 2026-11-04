@@ -603,7 +603,8 @@ func TestView_UnauthenticatedAllowed(t *testing.T) {
 }
 
 // TestView_RealTemplate_EditorOnlyForOwner renders the embedded view.html:
-// the owner gets the annotation editor, a visitor only the image.
+// the owner gets the annotation editor and an editable title and URL, a
+// visitor only the image and the plain link.
 func TestView_RealTemplate_EditorOnlyForOwner(t *testing.T) {
 	h, database, stor := newHandlers(t)
 	tmpls, err := tmpl.Parse()
@@ -628,7 +629,7 @@ func TestView_RealTemplate_EditorOnlyForOwner(t *testing.T) {
 		return rr.Body.String()
 	}
 
-	editorMarkers := []string{`id="toolbar"`, `fabric-5.3.0.min.js`, `id="canvas-wrap"`}
+	editorMarkers := []string{`id="toolbar"`, `fabric-5.3.0.min.js`, `id="canvas-wrap"`, `id="meta-edit"`, `Click to edit"`}
 	owner := render("owner@example.com")
 	for _, m := range editorMarkers {
 		if !strings.Contains(owner, m) {
